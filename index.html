@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unity | Бродівська ОТГ</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Phosphor Icons (Заміна Lucide для єдиного HTML) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel (Для компіляції JSX в браузері) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Firebase SDK (Compat версія для простішого використання в одному файлі) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #52525b; }
+        
+        /* Згладжування шрифтів */
+        body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    </style>
+</head>
+<body class="bg-[#09090b] text-zinc-300 font-sans selection:bg-fuchsia-500/30">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- НАЛАШТУВАННЯ FIREBASE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyB8jq9wf2gzAct-_iI0UgnbKMOVIR5NVmA",
+            authDomain: "unity-83eb8.firebaseapp.com",
+            projectId: "unity-83eb8",
+            storageBucket: "unity-83eb8.firebasestorage.app",
+            messagingSenderId: "442262504353",
+            appId: "1:442262504353:web:d797ff8fbfd7ff406681e0",
+            measurementId: "G-8PGGLES735"
+        };
+
+        // Ініціалізація Firebase (Compat Mode)
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const appId = 'unity-brody-v2';
+
+        const BRODY_SCHOOLS = [
+            "Бродівський ОЗЗСО №3", "Бродівська ЗОШ №2", "Бродівська ЗОШ №4", 
+            "Бродівська гімназія", "Бродівський ліцей", "Пониквянський ЗЗСО", 
+            "Відділ освіти Бродівської міської ради", "Інший заклад"
+        ];
+
+        const ROLES = [
+            { id: 'president', label: 'Президент школи', color: 'text-fuchsia-400 bg-fuchsia-500/10' },
+            { id: 'ambassador', label: 'Амбасадор', color: 'text-emerald-400 bg-emerald-500/10' },
+            { id: 'organizer', label: 'Організатор', color: 'text-blue-400 bg-blue-500/10' },
+            { id: 'coordinator', label: 'Координатор', color: 'text-amber-400 bg-amber-500/10' },
+            { id: 'admin', label: 'Адміністратор', color: 'text-rose-400 bg-rose-500/10 border border-rose-500/30' }
+        ];
+
+        // Головний компонент
+        function App() {
+            const [user, setUser] = useState(null);
+            const [authLoading, setAuthLoading] = useState(true);
+            
+            const [members, setMembers] = useState([]);
+            const [initiatives, setInitiatives] = useState([]);
+            const [votes, setVotes] = useState([]);
+            
+            const [activeTab, setActiveTab] = useState('cabinet');
+            const [loadingData, setLoadingData] = useState(true);
+
+            // Стан для кастомного Alert/Confirm
+            const [dialog, setDialog] = useState(null); 
+
+            // --- ІНІЦІАЛІЗАЦІЯ ---
+            useEffect(() => {
+                const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+                    setUser(currentUser);
+                    setAuthLoading(false);
+                });
+                return () => unsubscribe();
+            }, []);
+
+            useEffect(() => {
+                if (!user) return;
+                
+                // Допоміжна функція для шляху
+                const getColRef = (colName) => db.collection(`artifacts/${appId}/public/data/${colName}`);
+
+                const unsubMembers = getColRef('members').onSnapshot((snap) => {
+                    setMembers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                });
+                
+                const unsubInit = getColRef('initiatives').onSnapshot((snap) => {
+                    setInitiatives(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => b.createdAt - a.createdAt));
+                });
+                
+                const unsubVotes = getColRef('votes').onSnapshot((snap) => {
+                    setVotes(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => b.createdAt - a.createdAt));
+                    setLoadingData(false);
+                });
+
+                return () => { unsubMembers(); unsubInit(); unsubVotes(); };
+            }, [user]);
+
+            const profile = useMemo(() => members.find(m => m.uid === user?.uid), [members, user]);
+            
+            const handleLogout = () => auth.signOut();
+
+            // Функція виклику кастомного Confirm
+            const confirmAction = (message, actionText, actionFn) => {
+                setDialog({ message, actionText, onConfirm: () => { actionFn(); setDialog(null); }, onCancel: () => setDialog(null) });
+            };
+            
+            const showAlert = (message) => {
+                setDialog({ message, isAlert: true, onConfirm: () => setDialog(null) });
+            };
+
+            if (authLoading) return <LoadingScreen message="Ініціалізація ядра..." />;
+            if (!user) return <AuthScreen auth={auth} />;
+            if (user && !profile && !loadingData) return <RegistrationScreen user={user} db={db} appId={appId} />;
+            if (loadingData && members.length === 0) return <LoadingScreen message="Синхронізація даних..." />;
+
+            // ПРАВА ДОСТУПУ
+            const isAdmin = profile?.role === 'admin';
+            const permissions = {
+                isAdmin,
+                canCreateTask: ['ambassador', 'organizer', 'admin'].includes(profile?.role),
+                canCreateVote: ['organizer', 'admin'].includes(profile?.role),
+                isReadOnly: ['coordinator'].includes(profile?.role),
+            };
+
+            return (
+                <div className="min-h-screen relative overflow-hidden flex flex-col">
+                    {/* Декоративний фон */}
+                    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+                        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-violet-600/10 blur-[150px] rounded-full"></div>
+                        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-fuchsia-600/10 blur-[150px] rounded-full"></div>
+                    </div>
+
+                    <div className="flex h-screen relative z-10 p-4 gap-4">
+                        {/* НАВІГАЦІЯ */}
+                        <aside className="w-20 lg:w-64 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl flex flex-col items-center lg:items-stretch py-6 px-3 shadow-2xl transition-all">
+                            <div className="flex items-center justify-center lg:justify-start gap-3 px-2 mb-10">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/20 shrink-0">
+                                    <i className="ph ph-shield-check text-2xl text-white"></i>
+                                </div>
+                                <div className="hidden lg:block">
+                                    <h1 className="text-xl font-black text-white tracking-widest uppercase">Unity</h1>
+                                    <p className="text-[9px] text-zinc-400 font-medium tracking-widest uppercase">Бродівська ОТГ</p>
+                                </div>
+                            </div>
+
+                            <nav className="flex-1 space-y-2 overflow-y-auto pr-1 custom-scrollbar">
+                                <NavItem iconClass="ph ph-briefcase" label="Мій Кабінет" active={activeTab === 'cabinet'} onClick={() => setActiveTab('cabinet')} />
+                                <NavItem iconClass="ph ph-squares-four" label="Штаб (Hub)" active={activeTab === 'hub'} onClick={() => setActiveTab('hub')} />
+                                <NavItem iconClass="ph ph-target" label="Ініціативи" active={activeTab === 'initiatives'} onClick={() => setActiveTab('initiatives')} />
+                                <NavItem iconClass="ph ph-check-square" label="Голосування" active={activeTab === 'voting'} onClick={() => setActiveTab('voting')} />
+                                <NavItem iconClass="ph ph-users" label="Мережа" active={activeTab === 'network'} onClick={() => setActiveTab('network')} />
+                                
+                                {isAdmin && (
+                                    <div className="pt-4 mt-4 border-t border-white/10">
+                                        <NavItem iconClass="ph ph-gear" label="Управління" active={activeTab === 'admin'} onClick={() => setActiveTab('admin')} colorClass="text-rose-400" />
+                                    </div>
+                                )}
+                            </nav>
+
+                            <div className="mt-4 pt-4 border-t border-white/5">
+                                <button onClick={handleLogout} className="w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-2xl hover:bg-rose-500/10 text-zinc-400 hover:text-rose-400 transition-colors group">
+                                    <i className="ph ph-sign-out text-xl group-hover:scale-110 transition-transform"></i>
+                                    <span className="hidden lg:inline font-medium text-sm">Вийти</span>
+                                </button>
+                            </div>
+                        </aside>
+
+                        {/* ГОЛОВНИЙ КОНТЕНТ */}
+                        <main className="flex-1 bg-white/[0.02] backdrop-blur-3xl border border-white/5 rounded-3xl overflow-y-auto relative shadow-2xl shadow-black/50 custom-scrollbar">
+                            <div className="max-w-6xl mx-auto p-8 lg:p-12">
+                                <header className="flex justify-between items-center mb-10">
+                                    <div>
+                                        <h2 className="text-3xl font-bold text-white tracking-tight">
+                                            {activeTab === 'cabinet' && 'Особистий Кабінет'}
+                                            {activeTab === 'hub' && 'Головний Штаб'}
+                                            {activeTab === 'initiatives' && 'Стратегічні Ініціативи'}
+                                            {activeTab === 'voting' && 'Парламентські Рішення'}
+                                            {activeTab === 'network' && 'Мережа Резидентів'}
+                                            {activeTab === 'admin' && 'Панель Керування Системою'}
+                                        </h2>
+                                        <p className="text-zinc-400 text-sm mt-1 flex items-center gap-2">
+                                            <i className="ph ph-activity text-emerald-500"></i>
+                                            Система працює в штатному режимі
+                                        </p>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-4 bg-white/5 border border-white/10 p-2 pr-4 rounded-full hover:bg-white/10 transition-colors cursor-pointer" onClick={() => setActiveTab('cabinet')}>
+                                        <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700">
+                                            <i className="ph ph-user-circle text-2xl text-zinc-300"></i>
+                                        </div>
+                                        <div className="hidden sm:block text-right">
+                                            <p className="text-sm font-semibold text-white leading-tight">{profile?.name}</p>
+                                            <p className="text-[10px] text-fuchsia-400 uppercase tracking-wider">{ROLES.find(r=>r.id===profile?.role)?.label}</p>
+                                        </div>
+                                    </div>
+                                </header>
+
+                                {/* ВІДЖЕТИ */}
+                                {activeTab === 'cabinet' && <CabinetView profile={profile} votes={votes} />}
+                                {activeTab === 'hub' && <HubView members={members} initiatives={initiatives} votes={votes} setActiveTab={setActiveTab} />}
+                                {activeTab === 'initiatives' && <InitiativesView initiatives={initiatives} perms={permissions} db={db} appId={appId} profile={profile} confirmAction={confirmAction} />}
+                                {activeTab === 'voting' && <VotingView votes={votes} perms={permissions} db={db} appId={appId} profile={profile} members={members} confirmAction={confirmAction} />}
+                                {activeTab === 'network' && <NetworkView members={members} />}
+                                {activeTab === 'admin' && isAdmin && <AdminPanelView members={members} db={db} appId={appId} profile={profile} confirmAction={confirmAction} showAlert={showAlert} />}
+                            </div>
+                        </main>
+                    </div>
+                    
+                    {/* Діалогове вікно (Модалка) */}
+                    {dialog && (
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+                            <div className="bg-[#18181b] border border-white/10 rounded-3xl w-full max-w-sm p-6 shadow-2xl flex flex-col items-center text-center">
+                                <div className="w-16 h-16 rounded-full bg-rose-500/10 flex items-center justify-center mb-4 border border-rose-500/20">
+                                    <i className={`ph ${dialog.isAlert ? 'ph-warning-circle' : 'ph-question'} text-3xl text-rose-400`}></i>
+                                </div>
+                                <h3 className="text-lg font-bold text-white mb-2">{dialog.isAlert ? 'Увага' : 'Підтвердження дії'}</h3>
+                                <p className="text-zinc-400 text-sm mb-6">{dialog.message}</p>
+                                <div className="flex gap-3 w-full">
+                                    {!dialog.isAlert && (
+                                        <button onClick={dialog.onCancel} className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl transition-colors font-medium text-sm">Скасувати</button>
+                                    )}
+                                    <button onClick={dialog.onConfirm} className="flex-1 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl transition-colors font-semibold text-sm shadow-lg shadow-rose-600/20">
+                                        {dialog.isAlert ? 'Зрозуміло' : (dialog.actionText || 'Підтвердити')}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // ================= UI КОМПОНЕНТИ =================
+        function NavItem({ iconClass, label, active, onClick, colorClass }) {
+            return (
+                <button onClick={onClick} className={`w-full flex items-center justify-center lg:justify-start gap-4 p-3 rounded-2xl transition-all duration-300 relative group ${active ? 'bg-white/10 text-white shadow-inner border border-white/5' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'}`}>
+                    {active && <div className="absolute left-0 w-1 h-6 bg-fuchsia-500 rounded-r-full" />}
+                    <div className={`${active ? (colorClass || 'text-fuchsia-400') : 'group-hover:text-zinc-300'} transition-colors`}>
+                        <i className={`${iconClass} text-[22px]`}></i>
+                    </div>
+                    <span className={`hidden lg:inline font-medium text-sm tracking-wide ${active ? 'font-semibold' : ''}`}>{label}</span>
+                </button>
+            );
+        }
+
+        function LoadingScreen({ message }) {
+            return (
+                <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-6">
+                        <div className="w-16 h-16 relative flex items-center justify-center">
+                            <div className="absolute inset-0 rounded-full border-t-2 border-fuchsia-500 animate-spin"></div>
+                            <i className="ph ph-shield-check text-4xl text-violet-500"></i>
+                        </div>
+                        <p className="text-zinc-400 text-sm tracking-widest uppercase animate-pulse">{message}</p>
+                    </div>
+                </div>
+            );
+        }
+
+        // ================= AUTH =================
+        function AuthScreen({ auth }) {
+            const [isLogin, setIsLogin] = useState(true);
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+            const [loading, setLoading] = useState(false);
+
+            const handleEmailAuth = async (e) => {
+                e.preventDefault(); setError(''); setLoading(true);
+                try {
+                    if (isLogin) await auth.signInWithEmailAndPassword(email, password);
+                    else await auth.createUserWithEmailAndPassword(email, password);
+                } catch (err) { 
+                    setError(err.message.includes('auth/') ? 'Помилка доступу. Перевірте дані.' : err.message); 
+                } finally { setLoading(false); }
+            };
+
+            const handleGoogleAuth = async () => {
+                setError(''); setLoading(true);
+                try { 
+                    const provider = new firebase.auth.GoogleAuthProvider();
+                    await auth.signInWithPopup(provider); 
+                } catch (err) { 
+                    setError('Помилка Google авторизації.'); setLoading(false); 
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-[#09090b] flex items-center justify-center p-4 relative overflow-hidden">
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+                    <div className="bg-white/5 border border-white/10 backdrop-blur-xl p-8 rounded-3xl w-full max-w-md shadow-2xl z-10">
+                        <div className="text-center mb-8">
+                            <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-fuchsia-600 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-fuchsia-500/20">
+                                <i className="ph ph-shield-check text-4xl text-white"></i>
+                            </div>
+                            <h1 className="text-2xl font-bold text-white tracking-wide">Система Unity</h1>
+                            <p className="text-zinc-400 text-sm mt-1">Доступ лише для авторизованих осіб</p>
+                        </div>
+                        {error && <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm p-3 rounded-xl mb-6 text-center">{error}</div>}
+                        
+                        <form onSubmit={handleEmailAuth} className="space-y-4">
+                            <div className="relative">
+                                <i className="ph ph-envelope-simple text-lg text-zinc-500 absolute left-3 top-3.5"></i>
+                                <input type="email" required placeholder="Службова пошта" value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors" />
+                            </div>
+                            <div className="relative">
+                                <i className="ph ph-lock text-lg text-zinc-500 absolute left-3 top-3.5"></i>
+                                <input type="password" required placeholder="Пароль доступу" value={password} onChange={e=>setPassword(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors" />
+                            </div>
+                            <button disabled={loading} className="w-full bg-white text-black font-semibold py-3 rounded-xl hover:bg-zinc-200 transition-colors flex justify-center items-center mt-2">
+                                {loading ? <i className="ph ph-spinner animate-spin text-xl"></i> : (isLogin ? 'Увійти' : 'Зареєструватись')}
+                            </button>
+                        </form>
+                        
+                        <div className="my-6 flex items-center gap-4">
+                            <div className="h-px bg-white/10 flex-1"></div>
+                            <span className="text-xs text-zinc-500 uppercase tracking-widest">Або</span>
+                            <div className="h-px bg-white/10 flex-1"></div>
+                        </div>
+                        
+                        <button onClick={handleGoogleAuth} disabled={loading} className="w-full bg-[#1A1A24] border border-white/10 text-white font-medium py-3 rounded-xl hover:bg-[#252532] transition-colors flex items-center justify-center gap-3">
+                            <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.58c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
+                            Продовжити з Google
+                        </button>
+                        
+                        <p className="text-center text-sm text-zinc-500 mt-6">
+                            {isLogin ? 'Немає доступу?' : 'Вже в системі?'}
+                            <button onClick={() => setIsLogin(!isLogin)} className="text-violet-400 hover:text-violet-300 ml-2 font-medium">{isLogin ? 'Створити акаунт' : 'Увійти'}</button>
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+
+        function RegistrationScreen({ user, db, appId }) {
+            const [name, setName] = useState('');
+            const [school, setSchool] = useState(BRODY_SCHOOLS[0]);
+            const [loading, setLoading] = useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault(); setLoading(true);
+                try {
+                    await db.collection(`artifacts/${appId}/public/data/members`).doc(user.uid).set({
+                        uid: user.uid, email: user.email, name, school, role: 'president', joinedAt: Date.now()
+                    });
+                } catch (err) { console.error(err); setLoading(false); }
+            };
+
+            return (
+                <div className="min-h-screen bg-[#09090b] flex items-center justify-center p-4">
+                    <div className="bg-white/5 border border-white/10 backdrop-blur-xl p-8 rounded-3xl w-full max-w-md shadow-2xl">
+                        <h2 className="text-2xl font-bold text-white mb-2">Оформлення мандату</h2>
+                        <p className="text-zinc-400 text-sm mb-6">Ваш акаунт безпечно створено. Введіть своє справжнє ім'я для роботи в системі.</p>
+                        <form onSubmit={handleSubmit} className="space-y-5">
+                            <div>
+                                <label className="text-xs text-zinc-500 mb-1 block uppercase tracking-wider">ПІБ Представника</label>
+                                <input required type="text" value={name} onChange={e=>setName(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-violet-500 focus:outline-none" />
+                            </div>
+                            <div>
+                                <label className="text-xs text-zinc-500 mb-1 block uppercase tracking-wider">Установа</label>
+                                <select value={school} onChange={e=>setSchool(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-violet-500 focus:outline-none appearance-none">
+                                    {BRODY_SCHOOLS.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                            </div>
+                            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex gap-3 mt-4 text-emerald-400 text-xs">
+                                <i className="ph ph-shield-check text-base shrink-0"></i>
+                                <p>Ви отримаєте базовий статус «Президент». Адміністратор зможе змінити вашу посаду після перевірки.</p>
+                            </div>
+                            <button disabled={loading} className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-semibold py-3 rounded-xl hover:opacity-90 mt-4 shadow-lg shadow-violet-500/30">Випустити ID-картку</button>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        // ================= ADMIN PANEL =================
+        function AdminPanelView({ members, db, appId, profile, confirmAction, showAlert }) {
+            const [searchTerm, setSearchTerm] = useState('');
+
+            const handleRoleChange = async (targetUid, newRole) => {
+                if(targetUid === profile.uid && newRole !== 'admin') {
+                    showAlert("Ви не можете зняти статус Адміністратора з себе."); return;
+                }
+                confirmAction("Підтвердити зміну посади користувача?", "Змінити", async () => {
+                    await db.collection(`artifacts/${appId}/public/data/members`).doc(targetUid).update({ role: newRole });
+                });
+            };
+
+            const handleDeleteMember = (targetUid) => {
+                if(targetUid === profile.uid) { showAlert("Не можна видалити свій акаунт."); return; }
+                confirmAction("УВАГА! Це безповоротно видалить доступ користувача до платформи. Продовжити?", "Видалити", async () => {
+                    await db.collection(`artifacts/${appId}/public/data/members`).doc(targetUid).delete();
+                });
+            };
+
+            const filteredMembers = members.filter(m => m.name.toLowerCase().includes(searchTerm.toLowerCase()) || m.school.toLowerCase().includes(searchTerm.toLowerCase()));
+
+            return (
+                <div className="animate-in fade-in duration-700 space-y-6">
+                    <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div>
+                            <h3 className="text-xl font-bold text-rose-400 flex items-center gap-2"><i className="ph ph-shield-check text-2xl"></i> Режим Адміністратора</h3>
+                            <p className="text-sm text-zinc-400 mt-1">Зміни в цьому розділі впливають на всю систему. Будьте обережні.</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden">
+                        <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/[0.02]">
+                            <h4 className="font-semibold text-white text-lg">Управління резидентами ({members.length})</h4>
+                            <input type="text" placeholder="Пошук (ПІБ або школа)..." value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} className="bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:border-fuchsia-500 focus:outline-none w-64" />
+                        </div>
+                        
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm">
+                                <thead className="text-xs text-zinc-500 uppercase bg-black/20 border-b border-white/10">
+                                    <tr><th className="px-6 py-4 font-medium">Користувач / Email</th><th className="px-6 py-4 font-medium">Установа</th><th className="px-6 py-4 font-medium">Посада (Роль)</th><th className="px-6 py-4 font-medium text-right">Дії</th></tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {filteredMembers.map(m => {
+                                        const roleInfo = ROLES.find(r => r.id === m.role) || ROLES[0];
+                                        return (
+                                            <tr key={m.id} className="hover:bg-white/5 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <p className="font-semibold text-white">{m.name}</p>
+                                                    <p className="text-xs text-zinc-500">{m.email}</p>
+                                                </td>
+                                                <td className="px-6 py-4 text-zinc-300">{m.school}</td>
+                                                <td className="px-6 py-4">
+                                                    <select 
+                                                        value={m.role} onChange={(e) => handleRoleChange(m.uid, e.target.value)}
+                                                        className={`text-xs font-bold px-2 py-1.5 rounded-lg border-none focus:ring-1 focus:ring-fuchsia-500 outline-none appearance-none cursor-pointer ${roleInfo.color}`}
+                                                    >
+                                                        {ROLES.map(r => <option key={r.id} value={r.id} className="bg-zinc-900 text-zinc-300">{r.label}</option>)}
+                                                    </select>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <button onClick={() => handleDeleteMember(m.uid)} className="p-2 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors" title="Видалити">
+                                                        <i className="ph ph-trash text-lg"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                            {filteredMembers.length === 0 && <p className="text-center text-zinc-500 py-8">Користувачів не знайдено</p>}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // ================= VIEWS =================
+        function CabinetView({ profile, votes }) {
+            const myVotes = votes.filter(v => v.options.yes.includes(profile.uid) || v.options.no.includes(profile.uid) || v.options.abstain.includes(profile.uid));
+            const roleInfo = ROLES.find(r=>r.id===profile.role);
+            return (
+                <div className="animate-in fade-in duration-700 space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2 bg-gradient-to-br from-white/10 to-transparent border border-white/10 rounded-3xl p-8 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-6 opacity-20 group-hover:opacity-40 transition-opacity"><i className="ph ph-shield-check text-[120px]"></i></div>
+                            <div className="relative z-10">
+                                <span className={`px-3 py-1 border rounded-full text-xs font-bold tracking-widest uppercase mb-6 inline-block ${roleInfo?.color}`}>{roleInfo?.label}</span>
+                                <h3 className="text-4xl font-black text-white mb-2">{profile.name}</h3>
+                                <p className="text-xl text-zinc-300 flex items-center gap-2 mb-8"><i className="ph ph-buildings text-xl text-violet-400"></i> {profile.school}</p>
+                                <div className="flex gap-8 border-t border-white/10 pt-6 mt-6">
+                                    <div><p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Участь у сесіях</p><p className="text-2xl font-bold text-white">{myVotes.length} <span className="text-sm text-zinc-500 font-normal">голосувань</span></p></div>
+                                    <div><p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Статус мандату</p><p className="text-sm font-medium text-emerald-400 flex items-center gap-1 mt-2"><i className="ph ph-check-circle text-base"></i> Дійсний</p></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col">
+                            <h4 className="text-sm font-semibold text-white uppercase tracking-wider mb-4 flex items-center gap-2"><i className="ph ph-medal text-base text-amber-400"></i> Моя активність</h4>
+                            <div className="flex-1 flex flex-col justify-center items-center text-center p-6 border border-dashed border-white/10 rounded-2xl bg-black/20">
+                                <p className="text-zinc-500 text-sm">Тут будуть відображатися ваші персональні доручення.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function HubView({ members, initiatives, votes, setActiveTab }) {
+            const activeVotes = votes.filter(v => v.status === 'active');
+            const activeInit = initiatives.filter(i => i.status !== 'done');
+            return (
+                <div className="animate-in fade-in duration-700 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-[160px]">
+                    <div onClick={()=>setActiveTab('network')} className="lg:col-span-2 lg:row-span-1 bg-white/5 border border-white/10 hover:border-white/20 rounded-3xl p-6 cursor-pointer transition-all flex flex-col justify-between group">
+                        <div className="flex justify-between items-start"><div className="w-12 h-12 bg-violet-500/20 rounded-2xl flex items-center justify-center text-violet-400 group-hover:scale-110 transition-transform"><i className="ph ph-users text-2xl"></i></div><i className="ph ph-caret-right text-xl text-zinc-600 group-hover:text-white transition-colors"></i></div>
+                        <div><h3 className="text-4xl font-black text-white">{members.length}</h3><p className="text-zinc-400 font-medium">Зареєстрованих представників</p></div>
+                    </div>
+                    <div onClick={()=>setActiveTab('voting')} className="lg:col-span-1 lg:row-span-2 bg-gradient-to-b from-fuchsia-600/20 to-violet-600/10 border border-fuchsia-500/20 rounded-3xl p-6 cursor-pointer hover:border-fuchsia-500/40 transition-all flex flex-col">
+                        <div className="w-12 h-12 bg-fuchsia-500/20 rounded-2xl flex items-center justify-center text-fuchsia-400 mb-auto"><i className="ph ph-check-square text-2xl"></i></div>
+                        <div className="mt-8"><h3 className="text-5xl font-black text-white mb-2">{activeVotes.length}</h3><p className="text-fuchsia-200 text-sm font-medium">Активних<br/>голосувань сесії</p></div>
+                    </div>
+                    <div onClick={()=>setActiveTab('initiatives')} className="lg:col-span-1 lg:row-span-1 bg-white/5 border border-white/10 hover:border-white/20 rounded-3xl p-6 cursor-pointer transition-all flex flex-col justify-between">
+                        <i className="ph ph-target text-emerald-400 mb-2 text-2xl"></i><div><h3 className="text-3xl font-bold text-white">{activeInit.length}</h3><p className="text-zinc-400 text-sm">Ініціативи в роботі</p></div>
+                    </div>
+                    <div className="lg:col-span-3 lg:row-span-1 bg-white/5 border border-white/10 rounded-3xl p-6 flex items-center gap-6 overflow-hidden relative">
+                        <div className="absolute right-0 top-0 h-full w-32 bg-gradient-to-l from-[#18181b] to-transparent pointer-events-none"></div>
+                        <div className="shrink-0 bg-white/10 p-3 rounded-2xl"><i className="ph ph-flag text-xl text-white"></i></div>
+                        <div className="min-w-0"><p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Остання активність платформи</p><p className="text-lg text-white font-medium truncate">{activeVotes[0] ? `Голосування: ${activeVotes[0].title}` : initiatives[0] ? `Нова ініціатива: ${initiatives[0].title}` : 'Очікування дій...'}</p></div>
+                    </div>
+                </div>
+            );
+        }
+
+        function InitiativesView({ initiatives, perms, db, appId, profile, confirmAction }) {
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            
+            const toggleStatus = async (id, currentStatus) => {
+                if (perms.isReadOnly) return;
+                await db.collection(`artifacts/${appId}/public/data/initiatives`).doc(id).update({ status: currentStatus === 'done' ? 'active' : 'done' });
+            };
+            
+            const handleDelete = (id) => {
+                confirmAction("Ви впевнені, що хочете видалити цю ініціативу?", "Видалити", async () => {
+                    await db.collection(`artifacts/${appId}/public/data/initiatives`).doc(id).delete();
+                });
+            };
+
+            return (
+                <div className="animate-in fade-in duration-700">
+                    <div className="flex justify-between items-end mb-8 border-b border-white/10 pb-6">
+                        <div><p className="text-zinc-400 mb-2">Стратегічне планування громади</p><h3 className="text-2xl font-bold text-white">Реєстр ініціатив</h3></div>
+                        {perms.canCreateTask && <button onClick={() => setIsModalOpen(true)} className="bg-white text-black px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-zinc-200 transition-colors flex items-center gap-2"><i className="ph ph-plus text-lg"></i> Додати ініціативу</button>}
+                    </div>
+                    <div className="space-y-4">
+                        {initiatives.map(init => (
+                            <div key={init.id} className={`p-6 rounded-3xl border transition-all relative group ${init.status === 'done' ? 'bg-white/5 border-white/5 opacity-60' : 'bg-white/10 border-white/10 hover:bg-white/15'}`}>
+                                {perms.isAdmin && <button onClick={()=>handleDelete(init.id)} className="absolute top-4 right-4 p-2 text-zinc-600 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-lg"><i className="ph ph-trash text-base"></i></button>}
+                                <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
+                                    <div className="flex-1 pr-10">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md ${init.status === 'done' ? 'bg-zinc-800 text-zinc-400' : 'bg-emerald-500/20 text-emerald-400'}`}>{init.status === 'done' ? 'Реалізовано' : 'В процесі'}</span>
+                                            <span className="text-xs text-zinc-500">{new Date(init.createdAt).toLocaleDateString()}</span>
+                                        </div>
+                                        <h4 className="text-xl font-semibold text-white mb-2">{init.title}</h4>
+                                        <p className="text-sm text-zinc-400">{init.description}</p>
+                                        <div className="mt-4 flex items-center gap-2 text-xs text-zinc-500"><i className="ph ph-user-circle text-sm"></i> Автор: {init.authorName}</div>
+                                    </div>
+                                    {!perms.isReadOnly && perms.canCreateTask && (
+                                        <button onClick={() => toggleStatus(init.id, init.status)} className="shrink-0 w-12 h-12 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/20 transition-colors text-white">
+                                            {init.status === 'done' ? <i className="ph ph-activity text-xl"></i> : <i className="ph ph-check-circle text-xl text-emerald-400"></i>}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                        {initiatives.length === 0 && <p className="text-center text-zinc-500 py-10">Реєстр порожній</p>}
+                    </div>
+                    {isModalOpen && <InitModal onClose={()=>setIsModalOpen(false)} db={db} appId={appId} profile={profile}/>}
+                </div>
+            );
+        }
+
+        function InitModal({ onClose, db, appId, profile }) {
+            const [title, setTitle] = useState(''); const [desc, setDesc] = useState('');
+            const submit = async (e) => {
+                e.preventDefault();
+                await db.collection(`artifacts/${appId}/public/data/initiatives`).add({ 
+                    title, description: desc, status: 'active', authorId: profile.uid, authorName: profile.name, createdAt: Date.now() 
+                });
+                onClose();
+            };
+            return (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-[#18181b] border border-white/10 rounded-3xl w-full max-w-lg p-8 shadow-2xl">
+                        <h3 className="text-xl font-bold text-white mb-6">Нова ініціатива</h3>
+                        <form onSubmit={submit} className="space-y-4">
+                            <input required type="text" placeholder="Назва (напр. Еко-толока)" value={title} onChange={e=>setTitle(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:border-violet-500 focus:outline-none" />
+                            <textarea required rows={4} placeholder="Опис проєкту..." value={desc} onChange={e=>setDesc(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:border-violet-500 focus:outline-none resize-none" />
+                            <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={onClose} className="px-6 py-3 text-zinc-400 hover:text-white transition-colors">Скасувати</button><button type="submit" className="px-6 py-3 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-colors">Затвердити</button></div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        function VotingView({ votes, perms, db, appId, profile, members, confirmAction }) {
+            const [isModalOpen, setIsModalOpen] = useState(false);
+
+            const handleVote = async (voteId, option) => {
+                if (perms.isReadOnly) return;
+                const voteDoc = votes.find(v => v.id === voteId);
+                if (!voteDoc || voteDoc.status !== 'active') return;
+                
+                const updatedOptions = { 
+                    yes: voteDoc.options.yes.filter(id => id !== profile.uid), 
+                    no: voteDoc.options.no.filter(id => id !== profile.uid), 
+                    abstain: voteDoc.options.abstain.filter(id => id !== profile.uid) 
+                };
+                updatedOptions[option].push(profile.uid);
+                
+                await db.collection(`artifacts/${appId}/public/data/votes`).doc(voteId).update({ options: updatedOptions });
+            };
+
+            const handleDelete = (id) => {
+                confirmAction("Остаточно видалити це голосування?", "Видалити", async () => {
+                    await db.collection(`artifacts/${appId}/public/data/votes`).doc(id).delete();
+                });
+            };
+
+            const handleCloseVote = (id) => {
+                confirmAction("Закрити голосування? Воно стане архівним.", "Закрити", async () => {
+                    await db.collection(`artifacts/${appId}/public/data/votes`).doc(id).update({ status: 'closed' });
+                });
+            };
+
+            return (
+                <div className="animate-in fade-in duration-700">
+                    <div className="flex justify-between items-end mb-8 border-b border-white/10 pb-6">
+                        <div><p className="text-zinc-400 mb-2">Електронна демократія</p><h3 className="text-2xl font-bold text-white">Парламентські Рішення</h3></div>
+                        {perms.canCreateVote && <button onClick={() => setIsModalOpen(true)} className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-colors flex items-center gap-2"><i className="ph ph-plus text-lg"></i> Створити білль</button>}
+                    </div>
+                    <div className="space-y-6">
+                        {votes.map(vote => (
+                            <VoteFeedCard key={vote.id} vote={vote} onVote={handleVote} profile={profile} perms={perms} totalMembers={members.filter(m=>m.role==='president').length || 17} onDelete={()=>handleDelete(vote.id)} onClose={()=>handleCloseVote(vote.id)} />
+                        ))}
+                        {votes.length === 0 && <p className="text-center text-zinc-500 py-10">Немає зареєстрованих рішень</p>}
+                    </div>
+                    {isModalOpen && <VoteModal onClose={()=>setIsModalOpen(false)} db={db} appId={appId} profile={profile} />}
+                </div>
+            );
+        }
+
+        function VoteFeedCard({ vote, onVote, profile, perms, totalMembers, onDelete, onClose }) {
+            const { yes, no, abstain } = vote.options;
+            const totalVotes = yes.length + no.length + abstain.length;
+            const userVote = yes.includes(profile.uid) ? 'yes' : no.includes(profile.uid) ? 'no' : abstain.includes(profile.uid) ? 'abstain' : null;
+            const getPercent = (arr) => totalVotes === 0 ? 0 : Math.round((arr.length / totalVotes) * 100);
+
+            return (
+                <div className="bg-white/5 border border-white/10 rounded-3xl p-6 lg:p-8 flex flex-col lg:flex-row gap-8 relative group">
+                    {perms.isAdmin && (
+                        <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {vote.status === 'active' && <button onClick={onClose} className="p-2 text-zinc-400 hover:text-amber-400 bg-black/40 rounded-lg transition-colors" title="Закрити голосування"><i className="ph ph-lock text-base"></i></button>}
+                            <button onClick={onDelete} className="p-2 text-zinc-400 hover:text-rose-400 bg-black/40 rounded-lg transition-colors" title="Видалити"><i className="ph ph-trash text-base"></i></button>
+                        </div>
+                    )}
+
+                    <div className="flex-1 pr-10">
+                        <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md mb-4 inline-block ${vote.status === 'active' ? 'bg-fuchsia-500/20 text-fuchsia-400' : 'bg-zinc-800 text-zinc-400'}`}>{vote.status === 'active' ? 'Триває голосування' : 'Рішення ухвалено'}</span>
+                        <h4 className="text-2xl font-semibold text-white mb-3">{vote.title}</h4>
+                        <p className="text-zinc-400 text-sm mb-6 leading-relaxed">{vote.description}</p>
+                        <div className="flex items-center gap-4 text-xs text-zinc-500 border-t border-white/5 pt-4"><span>Автор: {vote.authorName}</span><span>•</span><span>Кворум: {totalVotes}/{totalMembers}</span></div>
+                    </div>
+                    <div className="w-full lg:w-72 shrink-0 bg-black/20 rounded-2xl p-5 border border-white/5 flex flex-col justify-center mt-4 lg:mt-0">
+                        <div className="space-y-4 mb-6">
+                            <VoteBar label="За" pct={getPercent(yes)} color="bg-emerald-500" count={yes.length}/>
+                            <VoteBar label="Проти" pct={getPercent(no)} color="bg-rose-500" count={no.length}/>
+                            <VoteBar label="Утрим." pct={getPercent(abstain)} color="bg-zinc-500" count={abstain.length}/>
+                        </div>
+                        {!perms.isReadOnly && vote.status === 'active' && (
+                            <div className="grid grid-cols-3 gap-2">
+                                <button onClick={() => onVote(vote.id, 'yes')} className={`py-2 text-xs font-bold rounded-lg border transition-colors ${userVote==='yes'?'bg-emerald-500/20 text-emerald-400 border-emerald-500/50':'bg-white/5 text-zinc-400 border-transparent hover:bg-white/10'}`}>ЗА</button>
+                                <button onClick={() => onVote(vote.id, 'no')} className={`py-2 text-xs font-bold rounded-lg border transition-colors ${userVote==='no'?'bg-rose-500/20 text-rose-400 border-rose-500/50':'bg-white/5 text-zinc-400 border-transparent hover:bg-white/10'}`}>ПРОТИ</button>
+                                <button onClick={() => onVote(vote.id, 'abstain')} className={`py-2 text-xs font-bold rounded-lg border transition-colors ${userVote==='abstain'?'bg-zinc-700 text-white border-zinc-500':'bg-white/5 text-zinc-400 border-transparent hover:bg-white/10'}`}>УТР.</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        function VoteBar({ label, pct, color, count }) {
+            return (
+                <div>
+                    <div className="flex justify-between text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1"><span>{label} ({count})</span> <span>{pct}%</span></div>
+                    <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden"><div className={`h-full ${color} transition-all duration-500`} style={{ width: `${pct}%` }} /></div>
+                </div>
+            );
+        }
+
+        function VoteModal({ onClose, db, appId, profile }) {
+            const [title, setTitle] = useState(''); const [desc, setDesc] = useState('');
+            const submit = async (e) => {
+                e.preventDefault();
+                await db.collection(`artifacts/${appId}/public/data/votes`).add({ 
+                    title, description: desc, status: 'active', authorId: profile.uid, authorName: profile.name, options: { yes: [], no: [], abstain: [] }, createdAt: Date.now() 
+                });
+                onClose();
+            };
+            return (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-[#18181b] border border-white/10 rounded-3xl w-full max-w-lg p-8 shadow-2xl">
+                        <h3 className="text-xl font-bold text-white mb-6">Створення резолюції</h3>
+                        <form onSubmit={submit} className="space-y-4">
+                            <input required type="text" placeholder="Суть питання" value={title} onChange={e=>setTitle(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:border-fuchsia-500 focus:outline-none transition-colors" />
+                            <textarea required rows={4} placeholder="Повний текст..." value={desc} onChange={e=>setDesc(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:border-fuchsia-500 focus:outline-none resize-none transition-colors" />
+                            <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={onClose} className="px-6 py-3 text-zinc-400 hover:text-white transition-colors">Скасувати</button><button type="submit" className="px-6 py-3 bg-fuchsia-600 text-white font-semibold rounded-xl hover:bg-fuchsia-500 transition-colors">Запустити процес</button></div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        function NetworkView({ members }) {
+            return (
+                <div className="animate-in fade-in duration-700">
+                    <div className="mb-8 border-b border-white/10 pb-6"><p className="text-zinc-400 mb-2">Кадровий склад</p><h3 className="text-2xl font-bold text-white">Мережа Резидентів</h3></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {members.map(m => {
+                            const roleInfo = ROLES.find(r=>r.id===m.role);
+                            return (
+                                <div key={m.id} className="bg-white/5 border border-white/10 p-5 rounded-2xl flex items-center gap-4 hover:bg-white/10 transition-colors">
+                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center shrink-0 border border-white/10"><i className="ph ph-user-circle text-2xl text-zinc-300"></i></div>
+                                    <div className="min-w-0">
+                                        <p className="font-semibold text-white truncate">{m.name}</p>
+                                        <p className={`text-[10px] uppercase font-bold tracking-widest truncate mb-1 mt-1 ${roleInfo?.color.split(' ')[0]}`}>{roleInfo?.label}</p>
+                                        <p className="text-[11px] text-zinc-500 uppercase truncate">{m.school}</p>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
