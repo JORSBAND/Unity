@@ -146,16 +146,16 @@
             };
 
             return (
-                <div className="min-h-screen relative overflow-hidden flex flex-col">
+                <div className="min-h-screen relative overflow-hidden flex flex-col bg-[#09090b]">
                     {/* Декоративний фон */}
                     <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-                        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-violet-600/10 blur-[150px] rounded-full"></div>
-                        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-fuchsia-600/10 blur-[150px] rounded-full"></div>
+                        <div className="absolute top-[-20%] left-[-10%] w-[50%] md:w-[50%] h-[50%] bg-violet-600/10 blur-[100px] md:blur-[150px] rounded-full"></div>
+                        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] md:w-[50%] h-[50%] bg-fuchsia-600/10 blur-[100px] md:blur-[150px] rounded-full"></div>
                     </div>
 
-                    <div className="flex h-screen relative z-10 p-4 gap-4">
-                        {/* НАВІГАЦІЯ */}
-                        <aside className="w-20 lg:w-64 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl flex flex-col items-center lg:items-stretch py-6 px-3 shadow-2xl transition-all">
+                    <div className="flex h-screen relative z-10 md:p-4 md:gap-4">
+                        {/* НАВІГАЦІЯ (ДЕСКТОП) */}
+                        <aside className="hidden md:flex w-24 lg:w-64 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl flex-col items-center lg:items-stretch py-6 px-3 shadow-2xl transition-all">
                             <div className="flex items-center justify-center lg:justify-start gap-3 px-2 mb-10">
                                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/20 shrink-0">
                                     <i className="ph ph-shield-check text-2xl text-white"></i>
@@ -189,31 +189,31 @@
                         </aside>
 
                         {/* ГОЛОВНИЙ КОНТЕНТ */}
-                        <main className="flex-1 bg-white/[0.02] backdrop-blur-3xl border border-white/5 rounded-3xl overflow-y-auto relative shadow-2xl shadow-black/50 custom-scrollbar">
-                            <div className="max-w-6xl mx-auto p-8 lg:p-12">
-                                <header className="flex justify-between items-center mb-10">
+                        <main className="flex-1 bg-transparent md:bg-white/[0.02] md:backdrop-blur-3xl md:border md:border-white/5 rounded-none md:rounded-3xl overflow-y-auto relative shadow-2xl shadow-black/50 custom-scrollbar pb-24 md:pb-0">
+                            <div className="max-w-6xl mx-auto p-4 md:p-8 lg:p-12">
+                                <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 md:mb-10 bg-white/5 md:bg-transparent p-4 md:p-0 rounded-2xl md:rounded-none border border-white/5 md:border-none">
                                     <div>
-                                        <h2 className="text-3xl font-bold text-white tracking-tight">
+                                        <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
                                             {activeTab === 'cabinet' && 'Особистий Кабінет'}
                                             {activeTab === 'hub' && 'Головний Штаб'}
                                             {activeTab === 'initiatives' && 'Стратегічні Ініціативи'}
                                             {activeTab === 'voting' && 'Парламентські Рішення'}
                                             {activeTab === 'network' && 'Мережа Резидентів'}
-                                            {activeTab === 'admin' && 'Панель Керування Системою'}
+                                            {activeTab === 'admin' && 'Панель Керування'}
                                         </h2>
-                                        <p className="text-zinc-400 text-sm mt-1 flex items-center gap-2">
+                                        <p className="text-zinc-400 text-xs md:text-sm mt-1 flex items-center gap-2">
                                             <i className="ph ph-activity text-emerald-500"></i>
                                             Система працює в штатному режимі
                                         </p>
                                     </div>
                                     
-                                    <div className="flex items-center gap-4 bg-white/5 border border-white/10 p-2 pr-4 rounded-full hover:bg-white/10 transition-colors cursor-pointer" onClick={() => setActiveTab('cabinet')}>
-                                        <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700">
-                                            <i className="ph ph-user-circle text-2xl text-zinc-300"></i>
-                                        </div>
+                                    <div className="flex items-center gap-3 md:gap-4 bg-transparent md:bg-white/5 md:border md:border-white/10 md:p-2 md:pr-4 rounded-full hover:bg-white/5 transition-colors cursor-pointer w-full md:w-auto justify-end" onClick={() => setActiveTab('cabinet')}>
                                         <div className="hidden sm:block text-right">
                                             <p className="text-sm font-semibold text-white leading-tight">{profile?.name}</p>
                                             <p className="text-[10px] text-fuchsia-400 uppercase tracking-wider">{ROLES.find(r=>r.id===profile?.role)?.label}</p>
+                                        </div>
+                                        <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700 shrink-0">
+                                            <i className="ph ph-user-circle text-2xl text-zinc-300"></i>
                                         </div>
                                     </div>
                                 </header>
@@ -227,6 +227,19 @@
                                 {activeTab === 'admin' && isAdmin && <AdminPanelView members={members} db={db} appId={appId} profile={profile} confirmAction={confirmAction} showAlert={showAlert} />}
                             </div>
                         </main>
+
+                        {/* НАВІГАЦІЯ (МОБІЛЬНА) */}
+                        <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[#09090b]/95 backdrop-blur-xl border-t border-white/10 z-50 flex justify-around items-center p-2 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
+                            <MobileNavItem iconClass="ph-briefcase" label="Кабінет" active={activeTab === 'cabinet'} onClick={() => setActiveTab('cabinet')} />
+                            <MobileNavItem iconClass="ph-squares-four" label="Штаб" active={activeTab === 'hub'} onClick={() => setActiveTab('hub')} />
+                            <MobileNavItem iconClass="ph-target" label="Ініціативи" active={activeTab === 'initiatives'} onClick={() => setActiveTab('initiatives')} />
+                            <MobileNavItem iconClass="ph-check-square" label="Голоси" active={activeTab === 'voting'} onClick={() => setActiveTab('voting')} />
+                            {isAdmin ? (
+                                <MobileNavItem iconClass="ph-gear" label="Адмін" active={activeTab === 'admin'} onClick={() => setActiveTab('admin')} colorClass="text-rose-400" />
+                            ) : (
+                                <MobileNavItem iconClass="ph-users" label="Мережа" active={activeTab === 'network'} onClick={() => setActiveTab('network')} />
+                            )}
+                        </nav>
                     </div>
                     
                     {/* Діалогове вікно (Модалка) */}
@@ -262,6 +275,15 @@
                         <i className={`${iconClass} text-[22px]`}></i>
                     </div>
                     <span className={`hidden lg:inline font-medium text-sm tracking-wide ${active ? 'font-semibold' : ''}`}>{label}</span>
+                </button>
+            );
+        }
+
+        function MobileNavItem({ iconClass, label, active, onClick, colorClass }) {
+            return (
+                <button onClick={onClick} className={`flex flex-col items-center justify-center w-[4.5rem] h-14 rounded-xl transition-all ${active ? 'bg-white/10 text-white shadow-inner border border-white/5' : 'text-zinc-500 hover:text-zinc-300'}`}>
+                    <i className={`ph ${iconClass} text-2xl mb-0.5 ${active ? (colorClass || 'text-fuchsia-400') : ''}`}></i>
+                    <span className="text-[9px] font-medium tracking-wide">{label}</span>
                 </button>
             );
         }
@@ -310,9 +332,9 @@
 
             return (
                 <div className="min-h-screen bg-[#09090b] flex items-center justify-center p-4 relative overflow-hidden">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-600/20 rounded-full blur-[120px] pointer-events-none"></div>
-                    <div className="bg-white/5 border border-white/10 backdrop-blur-xl p-8 rounded-3xl w-full max-w-md shadow-2xl z-10">
-                        <div className="text-center mb-8">
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[600px] h-[300px] md:h-[600px] bg-violet-600/20 rounded-full blur-[100px] md:blur-[120px] pointer-events-none"></div>
+                    <div className="bg-white/5 border border-white/10 backdrop-blur-xl p-6 md:p-8 rounded-3xl w-full max-w-md shadow-2xl z-10">
+                        <div className="text-center mb-6 md:mb-8">
                             <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-fuchsia-600 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-fuchsia-500/20">
                                 <i className="ph ph-shield-check text-4xl text-white"></i>
                             </div>
@@ -370,8 +392,8 @@
             };
 
             return (
-                <div className="min-h-screen bg-[#09090b] flex items-center justify-center p-4">
-                    <div className="bg-white/5 border border-white/10 backdrop-blur-xl p-8 rounded-3xl w-full max-w-md shadow-2xl">
+                <div className="min-h-screen bg-[#09090b] flex items-center justify-center p-4 relative overflow-hidden">
+                    <div className="bg-white/5 border border-white/10 backdrop-blur-xl p-6 md:p-8 rounded-3xl w-full max-w-md shadow-2xl z-10 relative">
                         <h2 className="text-2xl font-bold text-white mb-2">Оформлення мандату</h2>
                         <p className="text-zinc-400 text-sm mb-6">Ваш акаунт безпечно створено. Введіть своє справжнє ім'я для роботи в системі.</p>
                         <form onSubmit={handleSubmit} className="space-y-5">
@@ -420,7 +442,7 @@
 
             return (
                 <div className="animate-in fade-in duration-700 space-y-6">
-                    <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                         <div>
                             <h3 className="text-xl font-bold text-rose-400 flex items-center gap-2"><i className="ph ph-shield-check text-2xl"></i> Режим Адміністратора</h3>
                             <p className="text-sm text-zinc-400 mt-1">Зміни в цьому розділі впливають на всю систему. Будьте обережні.</p>
@@ -428,13 +450,13 @@
                     </div>
 
                     <div className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden">
-                        <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/[0.02]">
+                        <div className="p-4 md:p-6 border-b border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02]">
                             <h4 className="font-semibold text-white text-lg">Управління резидентами ({members.length})</h4>
-                            <input type="text" placeholder="Пошук (ПІБ або школа)..." value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} className="bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:border-fuchsia-500 focus:outline-none w-64" />
+                            <input type="text" placeholder="Пошук (ПІБ або школа)..." value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} className="bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:border-fuchsia-500 focus:outline-none w-full sm:w-64" />
                         </div>
                         
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
+                        <div className="overflow-x-auto custom-scrollbar">
+                            <table className="w-full text-left text-sm min-w-[600px]">
                                 <thead className="text-xs text-zinc-500 uppercase bg-black/20 border-b border-white/10">
                                     <tr><th className="px-6 py-4 font-medium">Користувач / Email</th><th className="px-6 py-4 font-medium">Установа</th><th className="px-6 py-4 font-medium">Посада (Роль)</th><th className="px-6 py-4 font-medium text-right">Дії</th></tr>
                                 </thead>
@@ -478,17 +500,17 @@
             const myVotes = votes.filter(v => v.options.yes.includes(profile.uid) || v.options.no.includes(profile.uid) || v.options.abstain.includes(profile.uid));
             const roleInfo = ROLES.find(r=>r.id===profile.role);
             return (
-                <div className="animate-in fade-in duration-700 space-y-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-2 bg-gradient-to-br from-white/10 to-transparent border border-white/10 rounded-3xl p-8 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-6 opacity-20 group-hover:opacity-40 transition-opacity"><i className="ph ph-shield-check text-[120px]"></i></div>
+                <div className="animate-in fade-in duration-700 space-y-4 md:space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+                        <div className="lg:col-span-2 bg-gradient-to-br from-white/10 to-transparent border border-white/10 rounded-3xl p-6 md:p-8 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 md:p-6 opacity-20 group-hover:opacity-40 transition-opacity"><i className="ph ph-shield-check text-[80px] md:text-[120px]"></i></div>
                             <div className="relative z-10">
-                                <span className={`px-3 py-1 border rounded-full text-xs font-bold tracking-widest uppercase mb-6 inline-block ${roleInfo?.color}`}>{roleInfo?.label}</span>
-                                <h3 className="text-4xl font-black text-white mb-2">{profile.name}</h3>
-                                <p className="text-xl text-zinc-300 flex items-center gap-2 mb-8"><i className="ph ph-buildings text-xl text-violet-400"></i> {profile.school}</p>
-                                <div className="flex gap-8 border-t border-white/10 pt-6 mt-6">
+                                <span className={`px-3 py-1 border rounded-full text-xs font-bold tracking-widest uppercase mb-4 md:mb-6 inline-block ${roleInfo?.color}`}>{roleInfo?.label}</span>
+                                <h3 className="text-3xl md:text-4xl font-black text-white mb-2">{profile.name}</h3>
+                                <p className="text-lg md:text-xl text-zinc-300 flex items-center gap-2 mb-6 md:mb-8"><i className="ph ph-buildings text-xl text-violet-400"></i> {profile.school}</p>
+                                <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 border-t border-white/10 pt-4 md:pt-6 mt-4 md:mt-6">
                                     <div><p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Участь у сесіях</p><p className="text-2xl font-bold text-white">{myVotes.length} <span className="text-sm text-zinc-500 font-normal">голосувань</span></p></div>
-                                    <div><p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Статус мандату</p><p className="text-sm font-medium text-emerald-400 flex items-center gap-1 mt-2"><i className="ph ph-check-circle text-base"></i> Дійсний</p></div>
+                                    <div><p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Статус мандату</p><p className="text-sm font-medium text-emerald-400 flex items-center gap-1 mt-1 md:mt-2"><i className="ph ph-check-circle text-base"></i> Дійсний</p></div>
                                 </div>
                             </div>
                         </div>
@@ -507,22 +529,22 @@
             const activeVotes = votes.filter(v => v.status === 'active');
             const activeInit = initiatives.filter(i => i.status !== 'done');
             return (
-                <div className="animate-in fade-in duration-700 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-[160px]">
+                <div className="animate-in fade-in duration-700 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-[140px] md:auto-rows-[160px]">
                     <div onClick={()=>setActiveTab('network')} className="lg:col-span-2 lg:row-span-1 bg-white/5 border border-white/10 hover:border-white/20 rounded-3xl p-6 cursor-pointer transition-all flex flex-col justify-between group">
-                        <div className="flex justify-between items-start"><div className="w-12 h-12 bg-violet-500/20 rounded-2xl flex items-center justify-center text-violet-400 group-hover:scale-110 transition-transform"><i className="ph ph-users text-2xl"></i></div><i className="ph ph-caret-right text-xl text-zinc-600 group-hover:text-white transition-colors"></i></div>
-                        <div><h3 className="text-4xl font-black text-white">{members.length}</h3><p className="text-zinc-400 font-medium">Зареєстрованих представників</p></div>
+                        <div className="flex justify-between items-start"><div className="w-10 h-10 md:w-12 md:h-12 bg-violet-500/20 rounded-xl md:rounded-2xl flex items-center justify-center text-violet-400 group-hover:scale-110 transition-transform"><i className="ph ph-users text-xl md:text-2xl"></i></div><i className="ph ph-caret-right text-xl text-zinc-600 group-hover:text-white transition-colors"></i></div>
+                        <div><h3 className="text-3xl md:text-4xl font-black text-white">{members.length}</h3><p className="text-zinc-400 font-medium text-sm md:text-base">Зареєстрованих представників</p></div>
                     </div>
                     <div onClick={()=>setActiveTab('voting')} className="lg:col-span-1 lg:row-span-2 bg-gradient-to-b from-fuchsia-600/20 to-violet-600/10 border border-fuchsia-500/20 rounded-3xl p-6 cursor-pointer hover:border-fuchsia-500/40 transition-all flex flex-col">
-                        <div className="w-12 h-12 bg-fuchsia-500/20 rounded-2xl flex items-center justify-center text-fuchsia-400 mb-auto"><i className="ph ph-check-square text-2xl"></i></div>
-                        <div className="mt-8"><h3 className="text-5xl font-black text-white mb-2">{activeVotes.length}</h3><p className="text-fuchsia-200 text-sm font-medium">Активних<br/>голосувань сесії</p></div>
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-fuchsia-500/20 rounded-xl md:rounded-2xl flex items-center justify-center text-fuchsia-400 mb-auto"><i className="ph ph-check-square text-xl md:text-2xl"></i></div>
+                        <div className="mt-8"><h3 className="text-4xl md:text-5xl font-black text-white mb-2">{activeVotes.length}</h3><p className="text-fuchsia-200 text-sm font-medium">Активних<br/>голосувань сесії</p></div>
                     </div>
                     <div onClick={()=>setActiveTab('initiatives')} className="lg:col-span-1 lg:row-span-1 bg-white/5 border border-white/10 hover:border-white/20 rounded-3xl p-6 cursor-pointer transition-all flex flex-col justify-between">
-                        <i className="ph ph-target text-emerald-400 mb-2 text-2xl"></i><div><h3 className="text-3xl font-bold text-white">{activeInit.length}</h3><p className="text-zinc-400 text-sm">Ініціативи в роботі</p></div>
+                        <i className="ph ph-target text-emerald-400 mb-2 text-xl md:text-2xl"></i><div><h3 className="text-2xl md:text-3xl font-bold text-white">{activeInit.length}</h3><p className="text-zinc-400 text-sm">Ініціативи в роботі</p></div>
                     </div>
-                    <div className="lg:col-span-3 lg:row-span-1 bg-white/5 border border-white/10 rounded-3xl p-6 flex items-center gap-6 overflow-hidden relative">
-                        <div className="absolute right-0 top-0 h-full w-32 bg-gradient-to-l from-[#18181b] to-transparent pointer-events-none"></div>
-                        <div className="shrink-0 bg-white/10 p-3 rounded-2xl"><i className="ph ph-flag text-xl text-white"></i></div>
-                        <div className="min-w-0"><p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Остання активність платформи</p><p className="text-lg text-white font-medium truncate">{activeVotes[0] ? `Голосування: ${activeVotes[0].title}` : initiatives[0] ? `Нова ініціатива: ${initiatives[0].title}` : 'Очікування дій...'}</p></div>
+                    <div className="lg:col-span-3 lg:row-span-1 bg-white/5 border border-white/10 rounded-3xl p-5 md:p-6 flex items-center gap-4 md:gap-6 overflow-hidden relative">
+                        <div className="absolute right-0 top-0 h-full w-24 md:w-32 bg-gradient-to-l from-[#18181b] to-transparent pointer-events-none"></div>
+                        <div className="shrink-0 bg-white/10 p-2 md:p-3 rounded-xl md:rounded-2xl"><i className="ph ph-flag text-lg md:text-xl text-white"></i></div>
+                        <div className="min-w-0"><p className="text-[10px] md:text-xs text-zinc-500 uppercase tracking-widest mb-1">Остання активність</p><p className="text-base md:text-lg text-white font-medium truncate">{activeVotes[0] ? `Голосування: ${activeVotes[0].title}` : initiatives[0] ? `Нова ініціатива: ${initiatives[0].title}` : 'Очікування дій...'}</p></div>
                     </div>
                 </div>
             );
@@ -544,26 +566,26 @@
 
             return (
                 <div className="animate-in fade-in duration-700">
-                    <div className="flex justify-between items-end mb-8 border-b border-white/10 pb-6">
-                        <div><p className="text-zinc-400 mb-2">Стратегічне планування громади</p><h3 className="text-2xl font-bold text-white">Реєстр ініціатив</h3></div>
-                        {perms.canCreateTask && <button onClick={() => setIsModalOpen(true)} className="bg-white text-black px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-zinc-200 transition-colors flex items-center gap-2"><i className="ph ph-plus text-lg"></i> Додати ініціативу</button>}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 md:mb-8 border-b border-white/10 pb-4 md:pb-6 gap-4">
+                        <div><p className="text-zinc-400 mb-1 md:mb-2 text-sm md:text-base">Стратегічне планування громади</p><h3 className="text-2xl font-bold text-white">Реєстр ініціатив</h3></div>
+                        {perms.canCreateTask && <button onClick={() => setIsModalOpen(true)} className="w-full sm:w-auto justify-center bg-white text-black px-5 py-3 md:py-2.5 rounded-2xl md:rounded-full text-sm font-semibold hover:bg-zinc-200 transition-colors flex items-center gap-2"><i className="ph ph-plus text-lg"></i> Додати ініціативу</button>}
                     </div>
                     <div className="space-y-4">
                         {initiatives.map(init => (
-                            <div key={init.id} className={`p-6 rounded-3xl border transition-all relative group ${init.status === 'done' ? 'bg-white/5 border-white/5 opacity-60' : 'bg-white/10 border-white/10 hover:bg-white/15'}`}>
-                                {perms.isAdmin && <button onClick={()=>handleDelete(init.id)} className="absolute top-4 right-4 p-2 text-zinc-600 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-lg"><i className="ph ph-trash text-base"></i></button>}
-                                <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
-                                    <div className="flex-1 pr-10">
-                                        <div className="flex items-center gap-3 mb-2">
+                            <div key={init.id} className={`p-5 md:p-6 rounded-3xl border transition-all relative group ${init.status === 'done' ? 'bg-white/5 border-white/5 opacity-60' : 'bg-white/10 border-white/10 hover:bg-white/15'}`}>
+                                {perms.isAdmin && <button onClick={()=>handleDelete(init.id)} className="absolute top-4 right-4 p-2 text-zinc-600 hover:text-rose-400 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-lg"><i className="ph ph-trash text-base"></i></button>}
+                                <div className="flex flex-col md:flex-row gap-4 md:gap-6 justify-between items-start md:items-center">
+                                    <div className="flex-1 pr-10 md:pr-10">
+                                        <div className="flex items-center gap-2 md:gap-3 mb-2">
                                             <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md ${init.status === 'done' ? 'bg-zinc-800 text-zinc-400' : 'bg-emerald-500/20 text-emerald-400'}`}>{init.status === 'done' ? 'Реалізовано' : 'В процесі'}</span>
                                             <span className="text-xs text-zinc-500">{new Date(init.createdAt).toLocaleDateString()}</span>
                                         </div>
-                                        <h4 className="text-xl font-semibold text-white mb-2">{init.title}</h4>
+                                        <h4 className="text-lg md:text-xl font-semibold text-white mb-2">{init.title}</h4>
                                         <p className="text-sm text-zinc-400">{init.description}</p>
-                                        <div className="mt-4 flex items-center gap-2 text-xs text-zinc-500"><i className="ph ph-user-circle text-sm"></i> Автор: {init.authorName}</div>
+                                        <div className="mt-3 md:mt-4 flex items-center gap-2 text-xs text-zinc-500"><i className="ph ph-user-circle text-sm"></i> Автор: {init.authorName}</div>
                                     </div>
                                     {!perms.isReadOnly && perms.canCreateTask && (
-                                        <button onClick={() => toggleStatus(init.id, init.status)} className="shrink-0 w-12 h-12 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/20 transition-colors text-white">
+                                        <button onClick={() => toggleStatus(init.id, init.status)} className="shrink-0 w-12 h-12 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/20 transition-colors text-white self-end md:self-auto mt-2 md:mt-0">
                                             {init.status === 'done' ? <i className="ph ph-activity text-xl"></i> : <i className="ph ph-check-circle text-xl text-emerald-400"></i>}
                                         </button>
                                     )}
@@ -588,12 +610,12 @@
             };
             return (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-                    <div className="bg-[#18181b] border border-white/10 rounded-3xl w-full max-w-lg p-8 shadow-2xl">
+                    <div className="bg-[#18181b] border border-white/10 rounded-3xl w-full max-w-lg p-6 md:p-8 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
                         <h3 className="text-xl font-bold text-white mb-6">Нова ініціатива</h3>
                         <form onSubmit={submit} className="space-y-4">
-                            <input required type="text" placeholder="Назва (напр. Еко-толока)" value={title} onChange={e=>setTitle(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:border-violet-500 focus:outline-none" />
-                            <textarea required rows={4} placeholder="Опис проєкту..." value={desc} onChange={e=>setDesc(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:border-violet-500 focus:outline-none resize-none" />
-                            <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={onClose} className="px-6 py-3 text-zinc-400 hover:text-white transition-colors">Скасувати</button><button type="submit" className="px-6 py-3 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-colors">Затвердити</button></div>
+                            <input required type="text" placeholder="Назва (напр. Еко-толока)" value={title} onChange={e=>setTitle(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:border-violet-500 focus:outline-none transition-colors" />
+                            <textarea required rows={4} placeholder="Опис проєкту..." value={desc} onChange={e=>setDesc(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:border-violet-500 focus:outline-none resize-none transition-colors" />
+                            <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={onClose} className="px-5 md:px-6 py-3 text-zinc-400 hover:text-white transition-colors text-sm md:text-base">Скасувати</button><button type="submit" className="px-5 md:px-6 py-3 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-colors text-sm md:text-base">Затвердити</button></div>
                         </form>
                     </div>
                 </div>
@@ -632,9 +654,9 @@
 
             return (
                 <div className="animate-in fade-in duration-700">
-                    <div className="flex justify-between items-end mb-8 border-b border-white/10 pb-6">
-                        <div><p className="text-zinc-400 mb-2">Електронна демократія</p><h3 className="text-2xl font-bold text-white">Парламентські Рішення</h3></div>
-                        {perms.canCreateVote && <button onClick={() => setIsModalOpen(true)} className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-colors flex items-center gap-2"><i className="ph ph-plus text-lg"></i> Створити білль</button>}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 md:mb-8 border-b border-white/10 pb-4 md:pb-6 gap-4">
+                        <div><p className="text-zinc-400 mb-1 md:mb-2 text-sm md:text-base">Електронна демократія</p><h3 className="text-2xl font-bold text-white">Парламентські Рішення</h3></div>
+                        {perms.canCreateVote && <button onClick={() => setIsModalOpen(true)} className="w-full sm:w-auto justify-center bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-5 py-3 md:py-2.5 rounded-2xl md:rounded-full text-sm font-semibold transition-colors flex items-center gap-2"><i className="ph ph-plus text-lg"></i> Створити білль</button>}
                     </div>
                     <div className="space-y-6">
                         {votes.map(vote => (
@@ -654,31 +676,31 @@
             const getPercent = (arr) => totalVotes === 0 ? 0 : Math.round((arr.length / totalVotes) * 100);
 
             return (
-                <div className="bg-white/5 border border-white/10 rounded-3xl p-6 lg:p-8 flex flex-col lg:flex-row gap-8 relative group">
+                <div className="bg-white/5 border border-white/10 rounded-3xl p-5 md:p-6 lg:p-8 flex flex-col lg:flex-row gap-6 lg:gap-8 relative group">
                     {perms.isAdmin && (
-                        <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute top-4 right-4 flex gap-2 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity z-10">
                             {vote.status === 'active' && <button onClick={onClose} className="p-2 text-zinc-400 hover:text-amber-400 bg-black/40 rounded-lg transition-colors" title="Закрити голосування"><i className="ph ph-lock text-base"></i></button>}
                             <button onClick={onDelete} className="p-2 text-zinc-400 hover:text-rose-400 bg-black/40 rounded-lg transition-colors" title="Видалити"><i className="ph ph-trash text-base"></i></button>
                         </div>
                     )}
 
-                    <div className="flex-1 pr-10">
-                        <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md mb-4 inline-block ${vote.status === 'active' ? 'bg-fuchsia-500/20 text-fuchsia-400' : 'bg-zinc-800 text-zinc-400'}`}>{vote.status === 'active' ? 'Триває голосування' : 'Рішення ухвалено'}</span>
-                        <h4 className="text-2xl font-semibold text-white mb-3">{vote.title}</h4>
-                        <p className="text-zinc-400 text-sm mb-6 leading-relaxed">{vote.description}</p>
+                    <div className="flex-1 pr-0 lg:pr-10 mt-8 lg:mt-0">
+                        <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md mb-3 md:mb-4 inline-block ${vote.status === 'active' ? 'bg-fuchsia-500/20 text-fuchsia-400' : 'bg-zinc-800 text-zinc-400'}`}>{vote.status === 'active' ? 'Триває голосування' : 'Рішення ухвалено'}</span>
+                        <h4 className="text-xl md:text-2xl font-semibold text-white mb-2 md:mb-3">{vote.title}</h4>
+                        <p className="text-zinc-400 text-sm mb-4 md:mb-6 leading-relaxed">{vote.description}</p>
                         <div className="flex items-center gap-4 text-xs text-zinc-500 border-t border-white/5 pt-4"><span>Автор: {vote.authorName}</span><span>•</span><span>Кворум: {totalVotes}/{totalMembers}</span></div>
                     </div>
-                    <div className="w-full lg:w-72 shrink-0 bg-black/20 rounded-2xl p-5 border border-white/5 flex flex-col justify-center mt-4 lg:mt-0">
-                        <div className="space-y-4 mb-6">
+                    <div className="w-full lg:w-72 shrink-0 bg-black/20 rounded-2xl p-4 md:p-5 border border-white/5 flex flex-col justify-center">
+                        <div className="space-y-4 mb-5 md:mb-6">
                             <VoteBar label="За" pct={getPercent(yes)} color="bg-emerald-500" count={yes.length}/>
                             <VoteBar label="Проти" pct={getPercent(no)} color="bg-rose-500" count={no.length}/>
                             <VoteBar label="Утрим." pct={getPercent(abstain)} color="bg-zinc-500" count={abstain.length}/>
                         </div>
                         {!perms.isReadOnly && vote.status === 'active' && (
                             <div className="grid grid-cols-3 gap-2">
-                                <button onClick={() => onVote(vote.id, 'yes')} className={`py-2 text-xs font-bold rounded-lg border transition-colors ${userVote==='yes'?'bg-emerald-500/20 text-emerald-400 border-emerald-500/50':'bg-white/5 text-zinc-400 border-transparent hover:bg-white/10'}`}>ЗА</button>
-                                <button onClick={() => onVote(vote.id, 'no')} className={`py-2 text-xs font-bold rounded-lg border transition-colors ${userVote==='no'?'bg-rose-500/20 text-rose-400 border-rose-500/50':'bg-white/5 text-zinc-400 border-transparent hover:bg-white/10'}`}>ПРОТИ</button>
-                                <button onClick={() => onVote(vote.id, 'abstain')} className={`py-2 text-xs font-bold rounded-lg border transition-colors ${userVote==='abstain'?'bg-zinc-700 text-white border-zinc-500':'bg-white/5 text-zinc-400 border-transparent hover:bg-white/10'}`}>УТР.</button>
+                                <button onClick={() => onVote(vote.id, 'yes')} className={`py-2 md:py-3 text-xs font-bold rounded-lg md:rounded-xl border transition-colors ${userVote==='yes'?'bg-emerald-500/20 text-emerald-400 border-emerald-500/50':'bg-white/5 text-zinc-400 border-transparent hover:bg-white/10'}`}>ЗА</button>
+                                <button onClick={() => onVote(vote.id, 'no')} className={`py-2 md:py-3 text-xs font-bold rounded-lg md:rounded-xl border transition-colors ${userVote==='no'?'bg-rose-500/20 text-rose-400 border-rose-500/50':'bg-white/5 text-zinc-400 border-transparent hover:bg-white/10'}`}>ПРОТИ</button>
+                                <button onClick={() => onVote(vote.id, 'abstain')} className={`py-2 md:py-3 text-xs font-bold rounded-lg md:rounded-xl border transition-colors ${userVote==='abstain'?'bg-zinc-700 text-white border-zinc-500':'bg-white/5 text-zinc-400 border-transparent hover:bg-white/10'}`}>УТР.</button>
                             </div>
                         )}
                     </div>
@@ -706,12 +728,12 @@
             };
             return (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-                    <div className="bg-[#18181b] border border-white/10 rounded-3xl w-full max-w-lg p-8 shadow-2xl">
+                    <div className="bg-[#18181b] border border-white/10 rounded-3xl w-full max-w-lg p-6 md:p-8 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
                         <h3 className="text-xl font-bold text-white mb-6">Створення резолюції</h3>
                         <form onSubmit={submit} className="space-y-4">
                             <input required type="text" placeholder="Суть питання" value={title} onChange={e=>setTitle(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:border-fuchsia-500 focus:outline-none transition-colors" />
                             <textarea required rows={4} placeholder="Повний текст..." value={desc} onChange={e=>setDesc(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:border-fuchsia-500 focus:outline-none resize-none transition-colors" />
-                            <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={onClose} className="px-6 py-3 text-zinc-400 hover:text-white transition-colors">Скасувати</button><button type="submit" className="px-6 py-3 bg-fuchsia-600 text-white font-semibold rounded-xl hover:bg-fuchsia-500 transition-colors">Запустити процес</button></div>
+                            <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={onClose} className="px-5 md:px-6 py-3 text-zinc-400 hover:text-white transition-colors text-sm md:text-base">Скасувати</button><button type="submit" className="px-5 md:px-6 py-3 bg-fuchsia-600 text-white font-semibold rounded-xl hover:bg-fuchsia-500 transition-colors text-sm md:text-base">Запустити процес</button></div>
                         </form>
                     </div>
                 </div>
