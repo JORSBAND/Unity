@@ -123,8 +123,15 @@
             const handleLogout = () => auth.signOut();
 
             // Функція виклику кастомного Confirm
-            const confirmAction = (message, actionText, actionFn) => {
-                setDialog({ message, actionText, onConfirm: () => { actionFn(); setDialog(null); }, onCancel: () => setDialog(null) });
+            const confirmAction = (message, actionText, actionFn, options = {}) => {
+                setDialog({
+                    message,
+                    actionText,
+                    withInput: options.withInput || false,
+                    defaultValue: options.defaultValue || '',
+                    onConfirm: actionFn,
+                    onCancel: () => setDialog(null)
+                });
             };
             
             const showAlert = (message) => {
@@ -242,26 +249,7 @@
                         </nav>
                     </div>
                     
-                    {/* Діалогове вікно (Модалка) */}
-                    {dialog && (
-                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
-                            <div className="bg-[#18181b] border border-white/10 rounded-3xl w-full max-w-sm p-6 shadow-2xl flex flex-col items-center text-center">
-                                <div className="w-16 h-16 rounded-full bg-rose-500/10 flex items-center justify-center mb-4 border border-rose-500/20">
-                                    <i className={`ph ${dialog.isAlert ? 'ph-warning-circle' : 'ph-question'} text-3xl text-rose-400`}></i>
-                                </div>
-                                <h3 className="text-lg font-bold text-white mb-2">{dialog.isAlert ? 'Увага' : 'Підтвердження дії'}</h3>
-                                <p className="text-zinc-400 text-sm mb-6">{dialog.message}</p>
-                                <div className="flex gap-3 w-full">
-                                    {!dialog.isAlert && (
-                                        <button onClick={dialog.onCancel} className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl transition-colors font-medium text-sm">Скасувати</button>
-                                    )}
-                                    <button onClick={dialog.onConfirm} className="flex-1 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl transition-colors font-semibold text-sm shadow-lg shadow-rose-600/20">
-                                        {dialog.isAlert ? 'Зрозуміло' : (dialog.actionText || 'Підтвердити')}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    <DialogBox dialog={dialog} setDialog={setDialog} />
                 </div>
             );
         }
@@ -285,6 +273,57 @@
                     <i className={`ph ${iconClass} text-2xl mb-0.5 ${active ? (colorClass || 'text-fuchsia-400') : ''}`}></i>
                     <span className="text-[9px] font-medium tracking-wide">{label}</span>
                 </button>
+            );
+        }
+
+        function DialogBox({ dialog, setDialog }) {
+            const [inputValue, setInputValue] = useState('');
+
+            useEffect(() => {
+                if (dialog?.withInput) setInputValue(dialog.defaultValue || '');
+            }, [dialog]);
+
+            if (!dialog) return null;
+
+            const handleConfirm = () => {
+                if (dialog.withInput) {
+                    dialog.onConfirm(inputValue);
+                } else {
+                    dialog.onConfirm();
+                }
+                setDialog(null);
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+                    <div className="bg-[#18181b] border border-white/10 rounded-3xl w-full max-w-sm p-6 shadow-2xl flex flex-col items-center text-center">
+                        <div className="w-16 h-16 rounded-full bg-rose-500/10 flex items-center justify-center mb-4 border border-rose-500/20">
+                            <i className={`ph ${dialog.isAlert ? 'ph-warning-circle' : 'ph-question'} text-3xl text-rose-400`}></i>
+                        </div>
+                        <h3 className="text-lg font-bold text-white mb-2">{dialog.isAlert ? 'Увага' : 'Підтвердження дії'}</h3>
+                        <p className="text-zinc-400 text-sm mb-6">{dialog.message}</p>
+                        
+                        {dialog.withInput && (
+                            <input
+                                type="text"
+                                value={inputValue}
+                                onChange={e => setInputValue(e.target.value)}
+                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-fuchsia-500 focus:outline-none mb-6"
+                                placeholder="Введіть назву..."
+                                autoFocus
+                            />
+                        )}
+
+                        <div className="flex gap-3 w-full">
+                            {!dialog.isAlert && (
+                                <button onClick={dialog.onCancel} className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl transition-colors font-medium text-sm">Скасувати</button>
+                            )}
+                            <button onClick={handleConfirm} className="flex-1 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl transition-colors font-semibold text-sm shadow-lg shadow-rose-600/20">
+                                {dialog.isAlert ? 'Зрозуміло' : (dialog.actionText || 'Підтвердити')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             );
         }
 
@@ -380,13 +419,16 @@
         function RegistrationScreen({ user, db, appId }) {
             const [name, setName] = useState('');
             const [school, setSchool] = useState(BRODY_SCHOOLS[0]);
+            const [customSchool, setCustomSchool] = useState('');
             const [loading, setLoading] = useState(false);
 
             const handleSubmit = async (e) => {
                 e.preventDefault(); setLoading(true);
+                const finalSchool = school === 'Інший заклад' ? customSchool : school;
+                
                 try {
                     await db.collection(`artifacts/${appId}/public/data/members`).doc(user.uid).set({
-                        uid: user.uid, email: user.email, name, school, role: 'president', joinedAt: Date.now()
+                        uid: user.uid, email: user.email, name, school: finalSchool, role: 'president', joinedAt: Date.now()
                     });
                 } catch (err) { console.error(err); setLoading(false); }
             };
@@ -407,6 +449,12 @@
                                     {BRODY_SCHOOLS.map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
+                            {school === 'Інший заклад' && (
+                                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <label className="text-xs text-zinc-500 mb-1 block uppercase tracking-wider">Вкажіть назву вашого закладу</label>
+                                    <input required type="text" placeholder="Наприклад: Музична школа" value={customSchool} onChange={e=>setCustomSchool(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-violet-500 focus:outline-none" />
+                                </div>
+                            )}
                             <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex gap-3 mt-4 text-emerald-400 text-xs">
                                 <i className="ph ph-shield-check text-base shrink-0"></i>
                                 <p>Ви отримаєте базовий статус «Президент». Адміністратор зможе змінити вашу посаду після перевірки.</p>
@@ -422,19 +470,49 @@
         function AdminPanelView({ members, db, appId, profile, confirmAction, showAlert }) {
             const [searchTerm, setSearchTerm] = useState('');
 
-            const handleRoleChange = async (targetUid, newRole) => {
+            const handleRoleChange = (targetUid, newRole) => {
                 if(targetUid === profile.uid && newRole !== 'admin') {
                     showAlert("Ви не можете зняти статус Адміністратора з себе."); return;
                 }
                 confirmAction("Підтвердити зміну посади користувача?", "Змінити", async () => {
-                    await db.collection(`artifacts/${appId}/public/data/members`).doc(targetUid).update({ role: newRole });
+                    try {
+                        await db.collection(`artifacts/${appId}/public/data/members`).doc(targetUid).update({ role: newRole });
+                    } catch (err) {
+                        showAlert("Помилка збереження: " + err.message);
+                    }
+                });
+            };
+
+            const handleSchoolChange = (targetUid, newSchool) => {
+                if (newSchool === 'custom_input') {
+                    confirmAction("Введіть назву нової установи:", "Зберегти", async (customVal) => {
+                        if (!customVal || !customVal.trim()) return;
+                        try {
+                            await db.collection(`artifacts/${appId}/public/data/members`).doc(targetUid).update({ school: customVal.trim() });
+                        } catch (err) {
+                            showAlert("Помилка збереження: " + err.message);
+                        }
+                    }, { withInput: true });
+                    return;
+                }
+
+                confirmAction(`Змінити установу на "${newSchool}"?`, "Змінити", async () => {
+                    try {
+                        await db.collection(`artifacts/${appId}/public/data/members`).doc(targetUid).update({ school: newSchool });
+                    } catch (err) {
+                        showAlert("Помилка збереження: " + err.message);
+                    }
                 });
             };
 
             const handleDeleteMember = (targetUid) => {
                 if(targetUid === profile.uid) { showAlert("Не можна видалити свій акаунт."); return; }
                 confirmAction("УВАГА! Це безповоротно видалить доступ користувача до платформи. Продовжити?", "Видалити", async () => {
-                    await db.collection(`artifacts/${appId}/public/data/members`).doc(targetUid).delete();
+                    try {
+                        await db.collection(`artifacts/${appId}/public/data/members`).doc(targetUid).delete();
+                    } catch (err) {
+                        showAlert("Помилка видалення: " + err.message);
+                    }
                 });
             };
 
@@ -469,7 +547,18 @@
                                                     <p className="font-semibold text-white">{m.name}</p>
                                                     <p className="text-xs text-zinc-500">{m.email}</p>
                                                 </td>
-                                                <td className="px-6 py-4 text-zinc-300">{m.school}</td>
+                                                <td className="px-6 py-4">
+                                                    <select 
+                                                        value={m.school} onChange={(e) => handleSchoolChange(m.uid, e.target.value)}
+                                                        className="bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-zinc-300 focus:border-fuchsia-500 focus:outline-none w-full max-w-[160px] cursor-pointer"
+                                                    >
+                                                        {!BRODY_SCHOOLS.includes(m.school) && m.school && (
+                                                            <option value={m.school}>{m.school}</option>
+                                                        )}
+                                                        {BRODY_SCHOOLS.filter(s => s !== 'Інший заклад').map(s => <option key={s} value={s} className="bg-zinc-900 text-zinc-300">{s}</option>)}
+                                                        <option value="custom_input" className="bg-zinc-900 text-fuchsia-400 font-bold">✏️ Ввести вручну...</option>
+                                                    </select>
+                                                </td>
                                                 <td className="px-6 py-4">
                                                     <select 
                                                         value={m.role} onChange={(e) => handleRoleChange(m.uid, e.target.value)}
